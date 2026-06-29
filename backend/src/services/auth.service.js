@@ -31,4 +31,31 @@ const registerUserService = async (userData) => {
   return createdUser;
 };
 
-export { registerUserService };
+const loginUserService = async (userData) => {
+  
+  const { email, password } = userData;
+
+  if(!email || !password){
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "Email and password are required.");
+  };
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await UserRepository.findByEmailWithPassword(normalizedEmail);
+
+  if (!user) {
+    throw new ApiError(HTTP_STATUS.UNAUTHORIZED, "Invalid email or password.");
+  }
+
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(HTTP_STATUS.UNAUTHORIZED, "Invalid email or password.");
+  }
+
+ const loggedInUser = await UserRepository.findById(user._id); 
+
+ return loggedInUser;
+};
+
+export { registerUserService, loginUserService };
