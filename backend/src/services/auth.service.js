@@ -1,6 +1,25 @@
 import UserRepository from "../repositories/user.repository.js";
 import ApiError from "../utils/ApiError.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
+import jwt from "jsonwebtoken";
+
+const generateAccessAndRefreshTokens = async (user) => {
+
+    const accessToken = user.generateAccessToken();
+
+    const refreshToken = user.generateRefreshToken();
+
+    await UserRepository.updateRefreshToken(
+        user._id,
+        refreshToken
+    );
+
+    return {
+        accessToken,
+        refreshToken
+    };
+
+};
 
 const registerUserService = async (userData) => {
   const { fullName, email, password } = userData;
@@ -55,11 +74,8 @@ const loginUserService = async (userData) => {
     throw new ApiError(HTTP_STATUS.UNAUTHORIZED, "Invalid email or password.");
   }
 
-  const accessToken = user.generateAccessToken();
-
-  const refreshToken = user.generateRefreshToken();
-
-  await UserRepository.updateRefreshToken(user._id, refreshToken);
+const { accessToken, refreshToken } =
+  await generateAccessAndRefreshTokens(user);
 
   const loggedInUser = await UserRepository.findById(user._id);
 
@@ -70,4 +86,38 @@ const loginUserService = async (userData) => {
   };
 };
 
-export { registerUserService, loginUserService };
+const refreshAccessTokenService = async (incomingRefreshToken) => {
+  if (!incomingRefreshToken) {
+    throw new ApiError(HTTP_STATUS.UNAUTHORIZED, "Refresh token is required.");
+  }
+
+  const decodedToken = jwt.verify(
+    incomingRefreshToken,
+    process.env.JWT_REFRESH_SECRET,
+  );
+
+  const user = await UserRepository.findByIdWithRefreshToken(
+    decodedToken.userId,
+  );
+
+  if (!user) {
+    throw new ApiError(HTTP_STATUS.UNAUTHORIZED, "Invalid Refresh Token.");
+  }
+
+  if (incomingRefreshToken !== user.refreshToken) {
+    throw new ApiError(
+      HTTP_STATUS.UNAUTHORIZED,
+      "Refresh Token Expired or Reused.",
+    );
+  }
+
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshTokens(user);
+
+  return {
+    accessToken,
+    refreshToken,
+  };
+};
+
+export { registerUserService, loginUserService, refreshAccessTokenService };

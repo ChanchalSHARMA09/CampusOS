@@ -24,5 +24,9 @@ class UserRepository {
       { new: true },
     );
   }
+
+  static async findByIdWithRefreshToken(id) {
+    return await User.findById(id);
+  }
 }
 export default UserRepository;

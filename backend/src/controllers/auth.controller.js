@@ -2,6 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import {
   registerUserService,
   loginUserService,
+  refreshAccessTokenService,
 } from "../services/auth.service.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -42,4 +43,18 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser, loginUser };
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const result = await refreshAccessTokenService(req.cookies.refreshToken);
+
+  return res
+    .status(HTTP_STATUS.OK)
+    .json(
+      new ApiResponse(
+        HTTP_STATUS.OK,
+        result,
+        "Access Token Refreshed Successfully.",
+      ),
+    );
+});
+
+export { registerUser, loginUser, refreshAccessToken };
